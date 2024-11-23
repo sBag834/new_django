@@ -1,67 +1,76 @@
 from django.db import models
-from datetime import timezone
-from datetime import datetime
 
-class Product(models.Model):
-    name = models.CharField(max_length = 255)
-    price = models.FloatField(default = 0.0)
+from django.contrib.auth.models import User
 
-class Staff(models.Model):
-    director = 'DI'
-    admin = 'AD'
-    cook = 'CO'
-    cashier = 'CA'
-    cleaner = 'CL'
 
-    POSITIONS = [
-        (director, 'Директор'),
-        (admin, 'Администратор'),
-        (cook, 'Повар'),
-        (cashier, 'Кассир'),
-        (cleaner, 'Уборщик')
-    ]
-    full_name = models.CharField(max_length = 255)
-    position = models.CharField(max_length=2, choices=POSITIONS, default=cashier)
-    labor_contract = models.IntegerField()
+class Author(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    rating = models.IntegerField(default=0)
 
-    def get_last_name(self):
-        return self.full_name.split()[0]
+    def update_rating(self):
+# Суммарный рейтинг статей автора умножается на 3
+        post_rating = sum(post.rating for post in Post.objects.filter(author=self)) * 3
+# Суммарный рейтинг всех комментариев автора
+        comment_rating = sum(comment.rating for comment in Comment.objects.filter(user=self.user))
+# Суммарный рейтинг всех комментариев к статьям автора
+        post_comments_rating = sum(comment.rating for post in Post.objects.filter(author=self)
+                                   for comment in Comment.objects.filter(post=post))
 
-class Order(models.Model):
-    time_in = models.DateTimeField(auto_now_add = True)
-    time_out = models.DateTimeField(null = True)
-    cost = models.FloatField(default = 0.0)
-    pickup = models.BooleanField(default = False)
-    complete = models.BooleanField(default = False)
-    staff = models.ForeignKey(Staff, on_delete = models.CASCADE)
-    products = models.ManyToManyField(Product, through='ProductOrder')
-
-    def finish_order(self):
-        self.time_out = datetime.now()
-        self.complete = True
+        self.rating = post_rating + comment_rating + post_comments_rating
         self.save()
 
-    def get_duration(self):
-        if self.complete:
-            return (self.time_out - self.time_in).total_seconds() // 60
-        else:  # если ещё нет, то сколько длится выполнение
-            return (datetime.now(timezone.utc) - self.time_in).total_seconds() // 60
+
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
-class ProductOrder(models.Model):
-    _amount = models.IntegerField(default = 1, db_column = 'amount')
-    order = models.ForeignKey(Order, on_delete = models.CASCADE)
-    product = models.ForeignKey(Product, on_delete = models.CASCADE)
+class Post(models.Model):
+    ARTICLE = 'AR'
+    NEWS = 'NE'
+    POST_TYPE_CHOICES = [
+        (ARTICLE, 'Article'),
+        (NEWS, 'News'),
+    ]
 
-    def product_sum(self):
-        product_price = self.product.price
-        return product_price * self.amount
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    post_type = models.CharField(max_length=2, choices=POST_TYPE_CHOICES)
+    created_time = models.DateTimeField(auto_now_add=True)
+    categories = models.ManyToManyField(Category, through='PostCategory')
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    rating = models.IntegerField(default=0)
 
-    @property
-    def amount(self):
-        return self._amount
+    def like(self):
+        self.rating += 1
+        self.save()
 
-    @amount.setter
-    def amount(self, value):
-        self._amount = int(value) if value >= 0 else 0
+    def dislike(self):
+        self.rating -= 1
+        self.save()
+
+    def preview(self):
+        return self.content[:124] + '...' if len(self.content) > 124 else self.content
+
+
+class PostCategory(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+
+class Comment(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_time = models.DateTimeField(auto_now_add=True)
+    rating = models.IntegerField(default=0)
+
+    def like(self):
+        self.rating += 1
+        self.save()
+
+    def dislike(self):
+        self.rating -= 1
         self.save()

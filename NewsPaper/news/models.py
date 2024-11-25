@@ -8,11 +8,8 @@ class Author(models.Model):
     rating = models.IntegerField(default=0)
 
     def update_rating(self):
-# Суммарный рейтинг статей автора умножается на 3
         post_rating = sum(post.rating for post in Post.objects.filter(author=self)) * 3
-# Суммарный рейтинг всех комментариев автора
         comment_rating = sum(comment.rating for comment in Comment.objects.filter(user=self.user))
-# Суммарный рейтинг всех комментариев к статьям автора
         post_comments_rating = sum(comment.rating for post in Post.objects.filter(author=self)
                                    for comment in Comment.objects.filter(post=post))
 
@@ -54,6 +51,11 @@ class Post(models.Model):
     def preview(self):
         return self.content[:124] + '...' if len(self.content) > 124 else self.content
 
+    def __str__(self):
+        return f'{self.title.title()}'
+
+    def view(self):
+        return f'{self.content}'
 
 class PostCategory(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)

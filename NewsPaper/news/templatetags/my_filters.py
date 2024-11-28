@@ -17,3 +17,4 @@ def censor(value):
     pattern = r'\b(' + '|'.join(BAD_WORDS) + r')\b'
 
     return re.sub(pattern, replace_bad_word, value, flags=re.IGNORECASE)
+

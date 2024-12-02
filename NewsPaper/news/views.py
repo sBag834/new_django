@@ -1,10 +1,34 @@
-from django.shortcuts import render,redirect, get_object_or_404
-from django.views.generic import ListView, DetailView
-from django.views import View
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.generic import ListView, DetailView, View, TemplateView
 from .models import Post, Category
 from datetime import datetime
 from .filters import PostFilter
 from .forms import NewsForm
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
+from .mixins import AuthorRequiredMixin
+
+
+@login_required
+def upgrade_me(request):
+    user = request.user
+    authors_group = Group.objects.get(name='authors')
+    if not request.user.groups.filter(name='authors').exists():
+        authors_group.user_set.add(user)
+    return redirect('/news/')
+
+
+class MyPage(LoginRequiredMixin, TemplateView):
+    template_name = 'profile.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_not_author'] = not self.request.user.groups.filter(name='authors').exists()
+        return context
+
+class AuthRequiredMixin(LoginRequiredMixin):
+    login_url = '/login/'
 
 class NewsList(ListView):
     model = Post
@@ -56,7 +80,7 @@ class NewsSearchView(View):
 
         return render(request, 'posts_search.html', context)
 
-class NewsCreateView(View):
+class NewsCreateView(AuthorRequiredMixin, AuthRequiredMixin, View):
     def get(self, request):
         form = NewsForm()
         return render(request, 'news_form.html', {'form': form})
@@ -70,7 +94,7 @@ class NewsCreateView(View):
             return redirect('news_list')
         return render(request, 'news_form.html', {'form': form})
 
-class NewsEditView(View):
+class NewsEditView(AuthorRequiredMixin, AuthRequiredMixin, View):
     def get(self, request, pk):
         news = get_object_or_404(Post, pk=pk)
         form = NewsForm(instance=news)
@@ -84,7 +108,7 @@ class NewsEditView(View):
             return redirect('news_list')
         return render(request, 'news_form.html', {'form': form})
 
-class NewsDeleteView(View):
+class NewsDeleteView(AuthorRequiredMixin, AuthRequiredMixin, View):
     def get(self, request, pk):
         news = get_object_or_404(Post, pk=pk)
         return render(request, 'news_confirm_delete.html', {'news': news})
@@ -111,7 +135,6 @@ class ArticleEditView(NewsEditView):
         if form.is_valid():
             form.save()
             return redirect('news_list')
-
 
 class ArticleDeleteView(NewsDeleteView):
 

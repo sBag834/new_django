@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Личный кабинет</title>
+</head>
+<body>
+    <h1>Личный кабинет</h1>
+
+    <h2>Привет, {{ user.username }}!</h2>
+
+    <p>Email: {{ user.email }}</p>
+    <p>Login: {{ user.username }}</p>
+
+    <h3>Данные профиля</h3>
+    <ul>
+        <li>Тут пока нечего отображать(</li>
+        <li>Заделка на будущее</li>
+    </ul>
+
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button class="nav-item" type="submit">Выйти</button>
+    </form>
+{% if is_not_author %}
+<button> <a href="upgrade/"> Хочу стать автором!!!</a> </button>
+{% endif %}
+
+</body>
+</html>

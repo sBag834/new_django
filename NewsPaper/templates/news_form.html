@@ -12,5 +12,10 @@
     {{ form.as_p }}
     <button type="submit">Сохранить</button>
 </form>
+
+{% if error %}
+    <div class="error">{{ error }}</div>
+{% endif %}
+
 <a href="{% url 'news_list' %}">Назад к списку новостей</a>
 {% endblock content %}

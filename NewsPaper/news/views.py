@@ -1,13 +1,17 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView, View, TemplateView
-from .models import Post, Category
+from .models import Post, Category, Author
 from datetime import datetime
+from django.utils import timezone
 from .filters import PostFilter
 from .forms import NewsForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from .mixins import AuthorRequiredMixin
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
 
 
 @login_required
@@ -16,8 +20,22 @@ def upgrade_me(request):
     authors_group = Group.objects.get(name='authors')
     if not request.user.groups.filter(name='authors').exists():
         authors_group.user_set.add(user)
+        new_au = Author.objects.create(user_id=request.user.id)
+        new_au.save()
     return redirect('/news/')
 
+@login_required
+def subscribe_to_category(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+
+    if request.method == 'POST':
+        if request.user in category.subscribers.all():
+            category.subscribers.remove(request.user)
+            print(f"{request.user.username} отписался от {category.name}")
+        else:
+            category.subscribers.add(request.user)
+            print(f"{request.user.username} подписался на {category.name}")
+    return redirect('news_list')
 
 class MyPage(LoginRequiredMixin, TemplateView):
     template_name = 'profile.html'
@@ -50,6 +68,11 @@ class NewDetail(DetailView):
     model = Post
     template_name = 'post.html'
     context_object_name = 'post'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = self.object.categories.all()
+        return context
 
 class NewsSearchView(View):
     def get(self, request):
@@ -87,10 +110,44 @@ class NewsCreateView(AuthorRequiredMixin, AuthRequiredMixin, View):
 
     def post(self, request):
         form = NewsForm(request.POST)
+        today = timezone.now().date()
+        author = Author.objects.get(user_id=request.user.id)
+        author_id = author.id
+        news_count_today = Post.objects.filter(author_id=author_id, created_time__date=today).count()
+
+        if news_count_today >= 3:
+            return render(request, 'news_form.html', {'form': form, 'error': 'Вы уже опубликовали 3 новости сегодня.'})
+
+
         if form.is_valid():
             news = form.save(commit=False)
             news.post_type = 'NE'
+            author = Author.objects.get(user_id=request.user.id)
+            author_id = author.id
+            news.author_id = author_id
             news.save()
+            form.save_m2m()
+
+            categories = news.categories.all()
+            subscribers = set()
+
+            for category in categories:
+                subscribers.update(category.subscribers.all())
+
+            for user in subscribers:
+                subject = news.title
+                text_content = f"Здравствуй, {user.username}. Новая статья: {news.title}. Содержимое: {news.content[:50]}..."
+                html_content = render_to_string('email_template.html', {
+                    'title': news.title,
+                    'content': news.content[:50],
+                    'username': user.username,
+                })
+
+                msg = EmailMultiAlternatives(subject, text_content, 'Snamix7@yandex.ru', [user.email])
+                msg.attach_alternative(html_content, "text/html")
+
+                msg.send(fail_silently=False)
+
             return redirect('news_list')
         return render(request, 'news_form.html', {'form': form})
 

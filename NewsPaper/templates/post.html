@@ -11,5 +11,15 @@ Post
 <br>
 <h5>Дата публикации: {{ post.created_time|date:'d M Y' }}</h5>
 <br>
+<h5>Категории: {{ categories|join:", " }}</h5>
 <h3>{{ post.view|censor }}</h3>
+
+{% for category in post.categories.all %}
+    <form method="post" action="{% url 'subscribe_to_category' category.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" name="subscribe">Подписаться на {{ category.name }}</button>
+    </form>
+{% endfor %}
+
 {% endblock content %}
+

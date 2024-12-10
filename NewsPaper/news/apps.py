@@ -4,7 +4,7 @@ class NewsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'news'
 
-
+'''
 class MyConfig(AppConfig):
     name = 'news'
 
@@ -28,3 +28,4 @@ class MyConfig(AppConfig):
         )
 
         scheduler.start()
+'''

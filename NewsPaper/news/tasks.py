@@ -2,9 +2,11 @@
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
+from celery import shared_task
 
 from .models import Post, Category
 
+@shared_task
 def send_weekly_newsletters():
     print("5")
     now = timezone.now()

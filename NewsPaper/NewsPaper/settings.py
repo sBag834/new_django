@@ -75,6 +75,15 @@ EMAIL_HOST_PASSWORD = 'dcupmgduuimdxiwp'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 SERVER_EMAIL = EMAIL_HOST_USER
 
+
+CELERY_BROKER_URL = 'redis://default:669TEUfLRONYR5coUo6tF7bgj47TWwdv@redis-13514.c328.europe-west3-1.gce.redns.redis-cloud.com:13514'
+CELERY_RESULT_BACKEND = 'redis://default:669TEUfLRONYR5coUo6tF7bgj47TWwdv@redis-13514.c328.europe-west3-1.gce.redns.redis-cloud.com:13514'
+'''
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+'''
+
 ACCOUNT_FORMS = {'signup': 'news.models.CommonSignupForm'}
 
 MIDDLEWARE = [

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
+import logging.config
 from pathlib import Path
 from celery.schedules import crontab
 
@@ -66,12 +67,111 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/news/'
 
 
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'detailed': {
+            'format': '{levelname} {asctime} {pathname} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'debug_filter': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: record.levelno <= logging.DEBUG if DEBUG else False,
+        },
+        'production_filter': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: record.levelno > logging.DEBUG if not DEBUG else False,
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'detailed',
+            'filters': ['debug_filter'],
+        },
+        'general_file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'general.log'),
+            'formatter': 'verbose',
+            'filters': ['production_filter'],
+        },
+        'error_file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'errors.log'),
+            'formatter': 'detailed',
+        },
+        'security_file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'security.log'),
+            'formatter': 'verbose',
+        },
+        'mail_admins_handler': {
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'detailed',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'general_file',],
+            'level': logging.DEBUG,
+        },
+        'django.request': {
+            'handlers': ['error_file',],
+            'level': logging.ERROR,
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["mail_admins_handler", "error_file"],
+            "level": logging.ERROR,
+            "propagate": False,
+        },
+        "django.template": {
+            "handlers": ["error_file"],
+            "level": logging.ERROR,
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["error_file"],
+            "level": logging.ERROR,
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["security_file"],
+            "level": logging.INFO,
+            "propagate": False,
+        },
+    }
+}
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.path.join(BASE_DIR, 'cache_files'), # Указываем, куда будем сохранять кэшируемые файлы!
+        # Не забываем создать папку cache_files внутри папки с manage.py!
+    }
+}
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.yandex.ru'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'Snamix7@yandex.ru'
-EMAIL_HOST_PASSWORD = secret
+EMAIL_HOST_PASSWORD = "vhkmtilicdsoghxx"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 SERVER_EMAIL = EMAIL_HOST_USER
 

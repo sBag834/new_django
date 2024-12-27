@@ -11,7 +11,7 @@ from django.contrib.auth.models import Group
 from .mixins import AuthorRequiredMixin
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-
+from django.core.cache import cache
 
 
 @login_required
@@ -70,8 +70,11 @@ class NewDetail(DetailView):
     context_object_name = 'post'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['categories'] = self.object.categories.all()
+        context = cache.get(f'news-{self.kwargs["pk"]}', None)
+        if not context:
+            context = super().get_context_data(**kwargs)
+            context['categories'] = self.object.categories.all()
+            cache.set(f'news-{self.kwargs["pk"]}', context)
         return context
 
 class NewsSearchView(View):
